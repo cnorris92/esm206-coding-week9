@@ -1,0 +1,94 @@
+---
+title: "Part 2 Chi Square with Lizards Tails"
+author: "Carly Norris"
+date: "12/3/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(here)
+library(janitor)
+library(broom)
+```
+
+
+## Read in data
+
+```{r}
+lizards <- read_csv(here("data", "lizards.csv"))
+```
+
+
+Get counts of lizards by species
+```{r}
+lizards %>% 
+  count(spp) %>% 
+  arrange(-n)
+```
+## Make a subset
+
+
+only keep:
+- UTST lizards
+- three sites with the highest trap populations sites: IBPE (enclosure grassland), RABB(rabbit mesquite site), "EAST" (east tarbrush site)
+- tail condition is recorded (W = whole), B= (broken)
+
+```{r}
+utst <- lizards %>% 
+  filter(spp== "UTST") %>% 
+  filter(site %in% c("IBPE", "RABB", "EAST")) %>% 
+  filter(tail %in% c("B", "W"))
+```
+- can use unique function to assure that what you have restricted in the function is actually occurring
+
+## Find counts and proportions of lizards with broken or whole tails at each site
+
+```{r}
+utst %>% 
+  count(site, tail)
+```
+
+nice to display both of these tables
+```{r}
+# table with counts
+tail_counts <- utst %>% 
+  janitor::tabyl(site, tail)
+
+# table with proportions by row (default is by rows), all in janitor package
+tail_proportions <- tail_counts %>% 
+  janitor::adorn_percentages() %>% 
+  adorn_pct_formatting(digits = 2)%>% # makes it a percent and rounds to two digits  
+  adorn_ns() # adds the counts to the table 
+```
+
+Is there a sig association between site and tail breakage? Can we reject the null that tail breakage is independent of site?
+
+## Convert to a contingency table
+Need to only have counts in the table to run chi- square. can convert column to row names using 'column_to_rownames()'
+ 
+```{r}
+lizard_ct <- tail_counts %>% 
+  column_to_rownames(var = "site")
+```
+
+## Chi-square
+
+Are tail breakage and site independent?
+
+```{r}
+lizard_x2 <- chisq.test(lizard_ct)
+lizard_x2
+
+lizard_tidy <- broom::tidy(lizard_x2) #used for inline referencing
+```
+Can reject the null: there is a significant association between site and tail breakage
+
+There is a significant association (i.e. non-independence) between site and lizard tail breakage ($\chi$^2^(`r lizard_tidy$parameter`) = `r lizard_tidy$statistic`, *p* = `r lizard_tidy$p.value`)
+
+
+
+
+
+
